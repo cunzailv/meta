@@ -1,8 +1,5 @@
 // Main interactive logic for index.html (module)
-// - lazy loads chinese-lunar if available (script tag fallback present)
-// - validates date (4-digit year between 1000 and 9999)
-// - robustly reads GanZhi fields from different lib shapes
-// - UI state handling (loading, report, error)
+// Improved pill-button interaction: click, pointerdown, keydown (Enter/Space), accessibility and fallback.
 
 const Elements = { '甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水','子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火','午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水' };
 
@@ -28,28 +25,58 @@ const reportTimeEl = document.getElementById('reportTime');
 
 const formError = document.getElementById('formError');
 
+// Pill buttons
 const challengeButtons = Array.from(document.querySelectorAll('.pill-btn'));
 let selectedChallenges = new Set();
+
+// Ensure pills are interactive and accessible (cursor + ARIA)
 challengeButtons.forEach(btn => {
-  btn.addEventListener('click', () => {
+  // Ensure pointer cursor
+  btn.style.cursor = 'pointer';
+  btn.setAttribute('role', 'button');
+  if (!btn.hasAttribute('tabindex')) btn.setAttribute('tabindex', '0');
+  if (!btn.hasAttribute('aria-pressed')) btn.setAttribute('aria-pressed', 'false');
+
+  // handler toggles pressed state
+  const toggle = (e) => {
+    // prevent form submit if somehow triggered inside form
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
     const v = btn.dataset.value;
     const pressed = btn.classList.toggle('pill-pressed');
     btn.setAttribute('aria-pressed', String(pressed));
     if (pressed) selectedChallenges.add(v); else selectedChallenges.delete(v);
+  };
+
+  // click handler
+  btn.addEventListener('click', (e) => toggle(e));
+
+  // pointerdown helps on some touch devices to avoid 300ms delays / interference
+  btn.addEventListener('pointerdown', (e) => {
+    // prevent focus/drag quirks
+    e.preventDefault();
+  });
+
+  // keyboard support: Enter and Space toggle
+  btn.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggle(e);
+    }
   });
 });
 
 // ensure lib loaded (if script tag present it may already be loaded)
 async function ensureChineseLunar() {
   if (window.chineseLunar) return window.chineseLunar;
-  // try loading from default path (if not pre-included)
   const path = '/libs/chinese-lunar.bundle.js';
   try {
     await new Promise((resolve, reject) => {
       const scripts = Array.from(document.scripts).map(s => s.src || '');
-      if (scripts.includes(location.origin + path) || scripts.includes(path)) {
-        // script tag already added; wait briefly for it to load
-        setTimeout(() => (window.chineseLunar ? resolve() : resolve()), 300);
+      const normalized = scripts.map(s => s.replace(location.origin, ''));
+      if (normalized.includes(path)) {
+        // if script tag already present, wait briefly
+        setTimeout(() => resolve(), 250);
         return;
       }
       const s = document.createElement('script');
@@ -60,7 +87,6 @@ async function ensureChineseLunar() {
       document.head.appendChild(s);
     });
   } catch (e) {
-    // ignore: we'll use graceful fallback
     console.warn('chinese-lunar load failed:', e);
   }
   return window.chineseLunar || null;
@@ -69,7 +95,6 @@ async function ensureChineseLunar() {
 // robust getter: accept many result shapes
 function extractGanZhi(res) {
   if (!res) return null;
-  // Several libs return an object with GanZhiYear/GanZhiMonth/GanZhiDay/GanZhiHour
   const yearP = res.GanZhiYear || res.ganZhiYear || res.yearGanZhi || res.year || res.yearCn || res.GanZhi || res.ganZhi || null;
   const monthP = res.GanZhiMonth || res.ganZhiMonth || res.month || res.monthCn || null;
   const dayP = res.GanZhiDay || res.ganZhiDay || res.day || res.dayCn || null;
@@ -84,7 +109,6 @@ function extractGanZhi(res) {
 }
 
 function simpleAnalyze(bazi) {
-  // best-effort: take first char of day pillar as day-master
   const day = (bazi.dayPillar && String(bazi.dayPillar)) || '';
   const dayChar = day ? day[0] : null;
   const element = Elements[dayChar] || '土';
@@ -126,7 +150,6 @@ function renderReport(bazi, analysis, date) {
   dayMasterEl.textContent = `${analysis.dayMaster}（${analysis.element}）`;
   analysisSummaryEl.textContent = `初步判断：日主 ${analysis.strength}；建议优先调和/补充“${analysis.favorable}”元素来平衡能量。关注：${Array.from(selectedChallenges).join('、')}`;
 
-  // simple recommendations UI
   recommendationsEl.innerHTML = `
     <div class="card p-3">
       <div class="font-semibold">建议一：易用品（示例）</div>
@@ -141,15 +164,12 @@ function renderReport(bazi, analysis, date) {
   reportTimeEl.textContent = new Date().toLocaleString();
 }
 
-// build Date reliably from inputs; if tz is provided like "+08:00", interpret user input as local at that tz
 function buildDateFromInputs(dateStr, timeStr, tzStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
   const [hh = 0, mm = 0] = (timeStr || '').split(':').map(Number);
   if (!tzStr) {
-    // interpret as local browser time
     return new Date(y, m - 1, d, hh, mm, 0, 0);
   }
-  // interpret input as time in tzStr, convert to UTC-based Date
   const sign = tzStr[0] === '-' ? -1 : 1;
   const [tH, tM] = tzStr.slice(1).split(':').map(Number);
   const offsetMinutes = sign * (tH * 60 + (tM || 0));
@@ -158,24 +178,19 @@ function buildDateFromInputs(dateStr, timeStr, tzStr) {
 }
 
 function validateYearFourDigits(dateStr) {
-  // dateStr is "YYYY-MM-DD"
   if (!dateStr) return false;
   const y = Number(dateStr.split('-')[0]);
   if (!Number.isInteger(y)) return false;
   return y >= 1000 && y <= 9999;
 }
 
-// attempt to call chineseLunar.solarToLunar in a few different ways
 function callSolarToLunar(date) {
   if (!window.chineseLunar) return null;
   try {
-    // some libs accept Date
     let res = null;
     try { res = window.chineseLunar.solarToLunar(date); } catch (e) {}
     if (!res) {
-      try {
-        res = window.chineseLunar.solarToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate());
-      } catch (e) { res = null; }
+      try { res = window.chineseLunar.solarToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate()); } catch (e) { res = null; }
     }
     return res;
   } catch (e) {
@@ -184,7 +199,6 @@ function callSolarToLunar(date) {
   }
 }
 
-// graceful fallback stub if library absent
 function stubSolarToLunar(date) {
   const y = date.getFullYear();
   const base = ['甲子','乙丑','丙寅','丁卯','戊辰','己巳','庚午','辛未','壬申','癸酉'];
@@ -213,19 +227,15 @@ form.addEventListener('submit', async (ev) => {
     return;
   }
 
-  // build date
   const userDate = buildDateFromInputs(dateStr, timeStr, tz);
 
-  // UI: loading
   loadingPanel.classList.remove('hidden');
   reportPanel.classList.add('hidden');
   noLibNotice.classList.add('hidden');
   analyzeBtn.disabled = true;
 
-  // ensure lib loaded (try)
   await ensureChineseLunar();
 
-  // compute (simulate slight delay for better UX)
   setTimeout(() => {
     let raw;
     if (window.chineseLunar) {
