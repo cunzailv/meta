@@ -5,362 +5,186 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>元能量 Meta-Energy - 你的个人能量平衡顾问</title>
 
-  <!-- Tailwind CDN (dev) -->
+  <!-- Tailwind (CDN quick dev) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 
   <style>
-    :root { --bg-1:#24243E; --bg-2:#302B63; --bg-3:#0F0C29; }
+    :root {
+      --bg-1:#0f1724;
+      --card-bg: rgba(255,255,255,0.04);
+      --glass-border: rgba(255,255,255,0.06);
+      --accent-from: #89f7fe;
+      --accent-to: #66a6ff;
+    }
     body {
-      font-family: 'Noto Sans SC', sans-serif;
-      background: linear-gradient(90deg, var(--bg-1), var(--bg-2), var(--bg-3));
-      color: #E0E0E0;
+      font-family: "Noto Sans SC", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(90deg,#0f1724 0%, #2a2342 50%, #0b1220 100%);
+      color: #e6eef8;
       -webkit-font-smoothing:antialiased;
       -moz-osx-font-smoothing:grayscale;
+      min-height: 100vh;
     }
-    .glass-card {
-      background: rgba(255,255,255,0.04);
+
+    .card {
+      background: var(--card-bg);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      border: 1px solid var(--glass-border);
       transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
     }
-    .glass-card:hover { transform: translateY(-6px); background: rgba(255,255,255,0.06); }
-    .btn-primary {
-      background: linear-gradient(90deg,#89f7fe 0%,#66a6ff 100%);
-      color:#0b1320;
-      box-shadow: 0 6px 18px rgba(102,166,255,0.22);
+    .card:hover { transform: translateY(-6px); box-shadow: 0 10px 30px rgba(2,6,23,0.5); }
+
+    .accent-btn {
+      background: linear-gradient(90deg,var(--accent-from), var(--accent-to));
+      color: #061024;
+      font-weight: 700;
+      box-shadow: 0 8px 22px rgba(102,166,255,0.18);
     }
-    .btn-primary:disabled { opacity:0.6; transform:none; box-shadow:none; }
+    .accent-btn:disabled { opacity: 0.6; transform:none; box-shadow:none; cursor:not-allowed; }
+
+    .pill-pressed { box-shadow: inset 0 0 0 2px rgba(102,166,255,0.12); transform: translateY(-2px); }
+
     .loader {
       border: 4px solid rgba(255,255,255,0.12);
-      border-left-color: #66a6ff;
-      border-radius: 50%;
-      width: 44px; height: 44px;
-      animation: spin 1s linear infinite;
+      border-left-color: var(--accent-to);
+      border-radius: 999px;
+      width: 44px; height: 44px; animation: spin 1s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .bazi-pillar { background: rgba(0,0,0,0.22); padding: 1rem; border-radius: .6rem; text-align:center; }
-    .bazi-char { font-size: 1.6rem; font-weight:700; line-height:1.1; }
+    .focus-ring:focus { outline: 3px solid rgba(102,166,255,0.18); outline-offset: 3px; border-radius: 10px; }
 
-    input[type="date"], input[type="time"] { color-scheme: dark; }
-    .focus-ring:focus { outline: 3px solid rgba(102,166,255,0.22); outline-offset: 2px; }
-    @media (max-width:640px) { .bazi-char { font-size: 1.25rem; } }
+    /* smaller screens adjust */
+    @media (max-width:640px) {
+      .bazi-char { font-size: 1.2rem; }
+    }
   </style>
 </head>
 
-<body class="min-h-screen flex items-center justify-center p-6">
-  <main id="app" class="w-full max-w-4xl">
+<body class="flex items-center justify-center p-6">
+  <main class="w-full max-w-5xl">
 
-    <!-- Input Card -->
-    <section id="inputCard" class="glass-card p-6 md:p-10 mb-6">
-      <header class="text-center mb-6">
-        <h1 class="text-3xl md:text-4xl font-bold">元能量 <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-300 to-purple-400">Meta‑Energy</span></h1>
-        <p class="text-sm text-gray-300 mt-2">你的个人能量平衡顾问 — 基于八字与节气的实用建议</p>
-      </header>
+    <header class="mb-6 text-center">
+      <h1 class="text-3xl md:text-4xl font-bold">元能量 <span class="bg-clip-text text-transparent" style="background:linear-gradient(90deg,var(--accent-from),var(--accent-to))">Meta‑Energy</span></h1>
+      <p class="text-sm text-gray-300 mt-2">你的个人能量平衡顾问 — 八字 & 节气校时示例</p>
+    </header>
 
-      <form id="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-4" novalidate>
-        <div>
-          <label for="name" class="block text-sm font-medium text-gray-300">称呼</label>
-          <input id="name" type="text" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700/40 border border-gray-600 text-white focus-ring" placeholder="例如：晓星" required>
-        </div>
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left: Form -->
+      <form id="profileForm" class="card p-6 lg:col-span-1" novalidate aria-labelledby="formTitle">
+        <h2 id="formTitle" class="text-lg font-semibold mb-4">输入信息</h2>
 
-        <div>
-          <label for="birthdate" class="block text-sm font-medium text-gray-300">出生日期（公历）</label>
-          <input id="birthdate" type="date" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700/40 border border-gray-600 text-white focus-ring" required>
-        </div>
+        <label class="block text-sm text-gray-300 mb-1">称呼</label>
+        <input id="name" type="text" placeholder="例如：晓星" class="w-full mb-4 px-3 py-2 rounded-lg bg-transparent border border-transparent focus:ring focus:ring-blue-400 focus:border-transparent focus:outline-none" required>
 
-        <div>
-          <label for="birthtime" class="block text-sm font-medium text-gray-300">出生时间（24小时制）</label>
-          <input id="birthtime" type="time" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700/40 border border-gray-600 text-white focus-ring" required>
-        </div>
+        <label class="block text-sm text-gray-300 mb-1">出生日期（公历）</label>
+        <!-- restrict min/max year (1000-9999) -->
+        <input id="birthdate" type="date" min="1000-01-01" max="9999-12-31" class="w-full mb-4 px-3 py-2 rounded-lg bg-transparent border border-transparent focus:ring focus:ring-blue-400" required aria-describedby="dateHint">
+        <div id="dateHint" class="text-xs text-gray-400 mb-2">支持年份范围：1000 - 9999（浏览器将显示四位年份）。</div>
 
-        <div>
-          <label for="tz" class="block text-sm font-medium text-gray-300">出生地时区（可选）</label>
-          <select id="tz" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700/40 border border-gray-600 text-white focus-ring">
-            <option value="">使用本地时区（推荐）</option>
-            <option value="+08:00">UTC+08:00（中国/香港/新加坡）</option>
-            <option value="+09:00">UTC+09:00（日本/韩国）</option>
-            <option value="-05:00">UTC-05:00（纽约）</option>
-          </select>
-        </div>
+        <label class="block text-sm text-gray-300 mb-1">出生时间（24小时）</label>
+        <input id="birthtime" type="time" class="w-full mb-4 px-3 py-2 rounded-lg bg-transparent border border-transparent focus:ring focus:ring-blue-400" required>
 
-        <div class="md:col-span-2">
-          <label class="block text-sm font-medium text-gray-300 mb-2">当前最困扰你的领域（至少选一项）</label>
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <button type="button" data-value="事业财运" class="challenge-btn glass-card py-3 rounded-lg text-sm" aria-pressed="false">事业财运</button>
-            <button type="button" data-value="情感关系" class="challenge-btn glass-card py-3 rounded-lg text-sm" aria-pressed="false">情感关系</button>
-            <button type="button" data-value="内心平静" class="challenge-btn glass-card py-3 rounded-lg text-sm" aria-pressed="false">内心平静</button>
-            <button type="button" data-value="人际交往" class="challenge-btn glass-card py-3 rounded-lg text-sm" aria-pressed="false">人际交往</button>
-            <button type="button" data-value="健康活力" class="challenge-btn glass-card py-3 rounded-lg text-sm" aria-pressed="false">健康活力</button>
-            <button type="button" data-value="个人成长" class="challenge-btn glass-card py-3 rounded-lg text-sm" aria-pressed="false">个人成长</button>
+        <label class="block text-sm text-gray-300 mb-1">出生地时区（可选）</label>
+        <select id="tz" class="w-full mb-4 px-3 py-2 rounded-lg bg-transparent border border-transparent focus:ring focus:ring-blue-400">
+          <option value="">使用本地时区</option>
+          <option value="+08:00">UTC+08:00（中国/香港/新加坡）</option>
+          <option value="+09:00">UTC+09:00（日本/韩国）</option>
+          <option value="-05:00">UTC-05:00（纽约）</option>
+        </select>
+
+        <div class="mb-4">
+          <div class="text-sm text-gray-300 mb-2">当前最困扰你的领域（可多选）</div>
+          <div id="challenges" class="grid grid-cols-2 gap-2">
+            <button type="button" data-value="事业财运" class="pill-btn text-sm p-2 rounded-lg text-left card focus-ring">事业财运</button>
+            <button type="button" data-value="情感关系" class="pill-btn text-sm p-2 rounded-lg text-left card focus-ring">情感关系</button>
+            <button type="button" data-value="内心平静" class="pill-btn text-sm p-2 rounded-lg text-left card focus-ring">内心平静</button>
+            <button type="button" data-value="人际交往" class="pill-btn text-sm p-2 rounded-lg text-left card focus-ring">人际交往</button>
+            <button type="button" data-value="健康活力" class="pill-btn text-sm p-2 rounded-lg text-left card focus-ring">健康活力</button>
+            <button type="button" data-value="个人成长" class="pill-btn text-sm p-2 rounded-lg text-left card focus-ring">个人成长</button>
           </div>
         </div>
 
-        <div class="md:col-span-2 text-center mt-3">
-          <button id="analyzeBtn" type="submit" class="btn-primary px-6 py-3 rounded-full font-semibold">开始分析</button>
+        <div class="flex space-x-3">
+          <button id="analyzeBtn" type="submit" class="accent-btn flex-1 px-4 py-2 rounded-full">开始分析</button>
+          <button id="clearBtn" type="button" class="px-4 py-2 rounded-full border border-gray-600">清空</button>
         </div>
 
-        <p id="formError" class="md:col-span-2 text-center text-sm text-red-400 hidden" role="alert"></p>
+        <p id="formError" role="alert" class="mt-3 text-sm text-red-400 hidden"></p>
+
+        <p class="mt-4 text-xs text-gray-400">说明：本页面为示例演示，八字计算依赖外部库（libs/chinese-lunar.bundle.js）。</p>
       </form>
-    </section>
 
-    <!-- Loading -->
-    <section id="loading" class="glass-card p-6 md:p-8 text-center hidden">
-      <div class="loader mx-auto"></div>
-      <p class="mt-4 text-gray-300">正在为您校准命盘并计算能量平衡…（仅示例）</p>
-    </section>
+      <!-- Middle: Loading / Report -->
+      <div class="card p-6 lg:col-span-2 space-y-4">
+        <div id="loadingPanel" class="hidden flex items-center space-x-4">
+          <div class="loader" aria-hidden="true"></div>
+          <div>
+            <div class="font-medium">正在计算并校准命盘…</div>
+            <div class="text-sm text-gray-400">会在几秒钟内完成（示例）。</div>
+          </div>
+        </div>
 
-    <!-- Report -->
-    <section id="report" class="hidden space-y-6">
-      <header class="text-center">
-        <h2 class="text-2xl font-bold">您的八字能量报告</h2>
-        <p id="greeting" class="text-sm text-gray-300 mt-2"></p>
-      </header>
+        <article id="reportPanel" class="hidden" aria-live="polite">
+          <header class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold">您的八字能量报告</h3>
+            <div class="text-xs text-gray-400" id="reportTime"></div>
+          </header>
 
-      <div class="glass-card p-5">
-        <h3 class="font-bold text-blue-300">八字命盘（简化显示）</h3>
-        <div class="grid grid-cols-4 gap-3 mt-3">
-          <div class="bazi-pillar"><div class="text-gray-400 text-xs">年柱</div><div id="yearP" class="bazi-char text-blue-300">—</div></div>
-          <div class="bazi-pillar"><div class="text-gray-400 text-xs">月柱</div><div id="monthP" class="bazi-char text-red-300">—</div></div>
-          <div class="bazi-pillar"><div class="text-gray-400 text-xs">日柱</div><div id="dayP" class="bazi-char text-yellow-300">—</div></div>
-          <div class="bazi-pillar"><div class="text-gray-400 text-xs">时柱</div><div id="hourP" class="bazi-char text-green-300">—</div></div>
+          <section class="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="bazi-pillar text-center p-3 card">
+              <div class="text-xs text-gray-400">年柱</div>
+              <div id="yearP" class="bazi-char text-blue-300 mt-2">—</div>
+            </div>
+            <div class="bazi-pillar text-center p-3 card">
+              <div class="text-xs text-gray-400">月柱</div>
+              <div id="monthP" class="bazi-char text-red-300 mt-2">—</div>
+            </div>
+            <div class="bazi-pillar text-center p-3 card">
+              <div class="text-xs text-gray-400">日柱</div>
+              <div id="dayP" class="bazi-char text-yellow-300 mt-2">—</div>
+            </div>
+            <div class="bazi-pillar text-center p-3 card">
+              <div class="text-xs text-gray-400">时柱</div>
+              <div id="hourP" class="bazi-char text-green-300 mt-2">—</div>
+            </div>
+          </section>
+
+          <section class="mt-4">
+            <h4 class="font-semibold text-blue-200">核心解析</h4>
+            <div class="mt-2 text-gray-200">
+              <p><strong>太阳星座：</strong><span id="zodiac">—</span></p>
+              <p><strong>日主：</strong><span id="dayMaster">—</span></p>
+              <p id="analysisSummary" class="mt-2 text-sm text-gray-300">—</p>
+            </div>
+          </section>
+
+          <section class="mt-4">
+            <h4 class="font-semibold text-orange-300">调理建议</h4>
+            <div id="recommendations" class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+          </section>
+
+          <div class="mt-4 text-right">
+            <button id="restartBtn" class="px-4 py-2 rounded-full bg-gray-700 hover:bg-gray-600">重新分析</button>
+          </div>
+        </article>
+
+        <div id="noLibNotice" class="text-sm text-gray-400">
+          （注）页面尝试从 <code>/libs/chinese-lunar.bundle.js</code> 加载八字库。若未提供实时库，会使用回退逻辑生成示例输出。
         </div>
       </div>
-
-      <div class="glass-card p-5">
-        <h3 class="font-bold text-blue-300">核心解析</h3>
-        <div class="mt-3 text-gray-200 space-y-2">
-          <div><strong>太阳星座：</strong><span id="zodiac">—</span></div>
-          <div><strong>日主：</strong><span id="dayMaster">—</span></div>
-          <div id="summary" class="text-sm text-gray-300">—</div>
-        </div>
-      </div>
-
-      <div class="glass-card p-5">
-        <h3 class="font-bold text-orange-300">调理建议（示例）</h3>
-        <div id="recommendations" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-      </div>
-
-      <div class="text-center">
-        <button id="restart" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-full">重新开始</button>
-      </div>
     </section>
 
-    <footer class="mt-6 text-center text-xs text-gray-500">注：本服务为能量与风格建议示例，不作医学或法律依据。</footer>
+    <footer class="mt-8 text-center text-xs text-gray-500">示例页面 — 不作为专业命理、医疗或法律建议。© Meta‑Energy</footer>
   </main>
 
-  <!-- Minimal script: optimized, modular, lazy load lunar lib if available -->
-  <script type="module">
-    const Elements = { '甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水','子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火','午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水' };
-    const RECOMMENDATIONS = {
-      crystal: { "金":{name:"白水晶",description:"净化与专注"}, "木":{name:"绿幽灵",description:"扎根与成长"}, "水":{name:"海蓝宝",description:"沟通与平和"}, "火":{name:"粉水晶",description:"热情与吸引"}, "土":{name:"黄水晶",description:"稳定与丰足"} },
-      digital: { "金":{name:"专注音频"}, "木":{name:"生命之树冥想"}, "水":{name:"深海频率"}, "火":{name:"内在火焰壁纸"}, "土":{name:"大地扎根练习"} }
-    };
+  <!-- 外部库(请存放为 /libs/chinese-lunar.bundle.js 或替换路径) -->
+  <!-- 建议不把大型 bundle 直接内嵌到 HTML，放到 libs/ 目录并由下面的主脚本按需加载 -->
+  <script src="/libs/chinese-lunar.bundle.js" defer></script>
 
-    const form = document.getElementById('profileForm');
-    const errorEl = document.getElementById('formError');
-    const loadingEl = document.getElementById('loading');
-    const inputCard = document.getElementById('inputCard');
-    const reportEl = document.getElementById('report');
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    const restartBtn = document.getElementById('restart');
-
-    const challengeBtns = Array.from(document.querySelectorAll('.challenge-btn'));
-    let selectedChallenges = new Set();
-    challengeBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const v = btn.dataset.value;
-        const pressed = btn.getAttribute('aria-pressed') === 'true';
-        btn.setAttribute('aria-pressed', String(!pressed));
-        btn.classList.toggle('ring-2');
-        if (!pressed) selectedChallenges.add(v); else selectedChallenges.delete(v);
-      });
-    });
-
-    function buildLocalDateFromInputs(dateStr, timeStr, tzOffsetStr) {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      const [hh = 0, mm = 0] = (timeStr || "").split(':').map(Number);
-      let local = new Date(y, (m - 1), d, hh || 0, mm || 0, 0, 0);
-      if (tzOffsetStr) {
-        const sign = tzOffsetStr[0] === '-' ? -1 : 1;
-        const [tH, tM] = tzOffsetStr.slice(1).split(':').map(Number);
-        const offsetMinutes = sign * (tH * 60 + (tM || 0));
-        const userLocalMillis = Date.UTC(y, m - 1, d, hh || 0, mm || 0, 0) - (offsetMinutes * 60 * 1000);
-        local = new Date(userLocalMillis);
-      }
-      return local;
-    }
-
-    async function ensureChineseLunar() {
-      if (window.chineseLunar) return window.chineseLunar;
-      const urls = ['/libs/chinese-lunar.min.js'];
-      for (const u of urls) {
-        if (!u) continue;
-        try {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = u;
-            s.async = true;
-            s.onload = () => resolve();
-            s.onerror = () => reject(new Error('load error'));
-            document.head.appendChild(s);
-          });
-          if (window.chineseLunar) return window.chineseLunar;
-        } catch (err) {
-          console.warn('加载 chinese-lunar 失败：', u, err);
-        }
-      }
-      return null;
-    }
-
-    function getBaziFromLibrary(date) {
-      if (!window.chineseLunar) return null;
-      try {
-        let res;
-        try { res = window.chineseLunar.solarToLunar(date); } catch (e1) {
-          const fd = { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate() };
-          try { res = window.chineseLunar.solarToLunar(fd.year, fd.month, fd.day); } catch (e2) { res = null; }
-        }
-        if (!res) return null;
-        const yearP = res.GanZhiYear || res.ganZhiYear || res.yearGanZhi || res.yearCn || res.year || null;
-        const monthP = res.GanZhiMonth || res.ganZhiMonth || res.monthCn || res.month || null;
-        const dayP = res.GanZhiDay || res.ganZhiDay || res.dayCn || (res.day && String(res.day)) || null;
-        const hourP = res.GanZhiHour || res.ganZhiHour || res.hour || null;
-        return {
-          yearPillar: yearP || '—',
-          monthPillar: monthP || '—',
-          dayPillar: dayP || '—',
-          hourPillar: hourP || '—',
-          raw: res
-        };
-      } catch (err) {
-        console.error('解析八字时出错：', err);
-        return null;
-      }
-    }
-
-    function analyzeBaziSimple(bazi) {
-      const day = (bazi.dayPillar || '').toString();
-      const dayChar = day ? day[0] : null;
-      const element = Elements[dayChar] || '土';
-      const strength = element === '木' || element === '火' ? '偏旺' : '偏弱';
-      const favorable = (element === '木' || element === '火') ? '水' : '木';
-      return { dayMaster: day || '—', dayMasterElement: element, strength, favorable };
-    }
-
-    function getZodiac(date) {
-      const day = date.getDate();
-      const month = date.getMonth() + 1;
-      const zodiacs = [
-        { sign: "摩羯座", start:[12,22], end:[1,19], element:"土" },
-        { sign: "水瓶座", start:[1,20], end:[2,18], element:"风" },
-        { sign: "双鱼座", start:[2,19], end:[3,20], element:"水" },
-        { sign: "白羊座", start:[3,21], end:[4,19], element:"火" },
-        { sign: "金牛座", start:[4,20], end:[5,20], element:"土" },
-        { sign: "双子座", start:[5,21], end:[6,21], element:"风" },
-        { sign: "巨蟹座", start:[6,22], end:[7,22], element:"水" },
-        { sign: "狮子座", start:[7,23], end:[8,22], element:"火" },
-        { sign: "处女座", start:[8,23], end:[9,22], element:"土" },
-        { sign: "天秤座", start:[9,23], end:[10,23], element:"风" },
-        { sign: "天蝎座", start:[10,24], end:[11,22], element:"水" },
-        { sign: "射手座", start:[11,23], end:[12,21], element:"火" }
-      ];
-      for (const z of zodiacs) {
-        if ((month === z.start[0] && day >= z.start[1]) || (month === z.end[0] && day <= z.end[1])) return z;
-      }
-      return zodiacs[0];
-    }
-
-    function showError(msg) {
-      errorEl.textContent = msg;
-      errorEl.classList.remove('hidden');
-      errorEl.focus();
-    }
-    function clearError() { errorEl.textContent = ''; errorEl.classList.add('hidden'); }
-
-    function renderRecommendations(fav) {
-      const container = document.getElementById('recommendations');
-      container.innerHTML = '';
-      const crystal = RECOMMENDATIONS.crystal[fav] || RECOMMENDATIONS.crystal['土'];
-      const digital = RECOMMENDATIONS.digital[fav] || RECOMMENDATIONS.digital['土'];
-
-      const card = (title, body) => {
-        const wrap = document.createElement('div');
-        wrap.className = 'glass-card p-4';
-        wrap.innerHTML = `<h4 class="font-semibold text-white mb-2">${title}</h4><div class="text-sm text-gray-300">${body}</div>`;
-        return wrap;
-      };
-      container.appendChild(card(crystal.name, crystal.description));
-      container.appendChild(card(digital.name, digital.description));
-    }
-
-    form.addEventListener('submit', async (ev) => {
-      ev.preventDefault();
-      clearError();
-
-      const name = document.getElementById('name').value.trim();
-      const dateStr = document.getElementById('birthdate').value;
-      const timeStr = document.getElementById('birthtime').value;
-      const tz = document.getElementById('tz').value || null;
-
-      if (!name || !dateStr || !timeStr || selectedChallenges.size === 0) {
-        showError('请填写姓名、出生日期与时间，并至少选择一个困扰领域。');
-        return;
-      }
-
-      const birthLocal = buildLocalDateFromInputs(dateStr, timeStr, tz);
-
-      inputCard.classList.add('hidden');
-      loadingEl.classList.remove('hidden');
-      analyzeBtn.disabled = true;
-
-      await ensureChineseLunar();
-
-      setTimeout(() => {
-        try {
-          const bazi = getBaziFromLibrary(birthLocal) || { yearPillar:'—', monthPillar:'—', dayPillar:'—', hourPillar:'—' };
-          const analysis = analyzeBaziSimple(bazi);
-
-          document.getElementById('greeting').textContent = `你好，${name}。下面是基于您输入的示例分析（仅供参考）。`;
-          document.getElementById('yearP').textContent = bazi.yearPillar || '—';
-          document.getElementById('monthP').textContent = bazi.monthPillar || '—';
-          document.getElementById('dayP').textContent = bazi.dayPillar || '—';
-          document.getElementById('hourP').textContent = bazi.hourPillar || '—';
-
-          const zodiac = getZodiac(birthLocal);
-          document.getElementById('zodiac').textContent = `${zodiac.sign}（${zodiac.element}象）`;
-          document.getElementById('dayMaster').textContent = `${analysis.dayMaster}（${analysis.dayMasterElement}）`;
-          document.getElementById('summary').textContent = `初步判定：日主${analysis.strength}。建议优先补充或协调“${analysis.favorable}”元素来调和能量场。关注：${Array.from(selectedChallenges).join('、')}`;
-
-          renderRecommendations(analysis.favorable);
-
-          loadingEl.classList.add('hidden');
-          reportEl.classList.remove('hidden');
-        } catch (err) {
-          console.error(err);
-          showError('分析过程中发生错误。请稍后重试或联系管理员。');
-          loadingEl.classList.add('hidden');
-          inputCard.classList.remove('hidden');
-        } finally {
-          analyzeBtn.disabled = false;
-        }
-      }, 800);
-    });
-
-    restartBtn.addEventListener('click', () => {
-      reportEl.classList.add('hidden');
-      inputCard.classList.remove('hidden');
-      document.getElementById('name').value = '';
-      document.getElementById('birthdate').value = '';
-      document.getElementById('birthtime').value = '';
-      document.getElementById('tz').value = '';
-      selectedChallenges.clear();
-      challengeBtns.forEach(b => { b.setAttribute('aria-pressed','false'); b.classList.remove('ring-2'); });
-      clearError();
-    });
-  </script>
+  <!-- 主逻辑（模块化，便于维护） -->
+  <script type="module" src="/js/main.js" defer></script>
 </body>
 </html>
